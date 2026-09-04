@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WP AJAX URL Content
  * Description: Serves the rendered content of any URL on this site without page chrome, plus the assets that content needs. Platform-independent core; theme and frontend behaviour come from adapters.
- * Version:     0.1.0
+ * Version:     0.2.2
  * Author:      wasilosos
  * License:     GPL-2.0-or-later
  * Text Domain: wp-ajax-url-content
@@ -36,13 +36,14 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WPAUC_VERSION', '0.1.0' );
+define( 'WPAUC_VERSION', '0.2.2' );
 define( 'WPAUC_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WPAUC_URL', plugin_dir_url( __FILE__ ) );
 
 require_once WPAUC_PATH . 'includes/class-wpauc-endpoint.php';
 require_once WPAUC_PATH . 'includes/class-wpauc-renderer.php';
 require_once WPAUC_PATH . 'includes/class-wpauc-assets.php';
+require_once WPAUC_PATH . 'includes/class-wpauc-frontend.php';
 
 /**
  * Load whichever integrations apply to this site.
@@ -58,5 +59,6 @@ add_action(
 		}
 
 		( new WPAUC_Endpoint() )->register();
+		( new WPAUC_Frontend() )->register();
 	}
 );

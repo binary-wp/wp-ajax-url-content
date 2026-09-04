@@ -1,0 +1,95 @@
+/**
+ * The fallback shell's structural CSS.
+ *
+ * ⚠ THIS IS NOT BRAND PAINT, and it is not optional. The plugin prints this
+ * shell itself (`WPAUC_Frontend::shell()`), so the plugin owns what makes it a
+ * shell: fixed position, a stacking context, an overlay, a scroll region.
+ * Without it the markup is a plain `<div>` that lands wherever it happens to be
+ * in the document — measured on the FAQ page at 20 203px down, 0px wide, and
+ * therefore invisible even though the content had loaded correctly.
+ *
+ * Everything a site would want to restyle is a custom property, so a theme
+ * overrides values rather than fighting selectors. Colour, radius, spacing and
+ * typography inside the body are deliberately left alone — that is the theme's.
+ */
+
+.wpauc-modal {
+	position: fixed;
+	inset: 0;
+	z-index: var( --wpauc-z, 100000 );
+	display: none;
+}
+
+.wpauc-modal.is-open {
+	display: block;
+}
+
+.wpauc-modal__overlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: var( --wpauc-gutter, 5vh 1rem );
+	background: var( --wpauc-overlay, rgba( 0, 0, 0, 0.7 ) );
+}
+
+.wpauc-modal__frame {
+	position: relative;
+	width: 100%;
+	max-width: var( --wpauc-width, 860px );
+	max-height: none;
+	background: var( --wpauc-bg, #fff );
+	box-shadow: var( --wpauc-shadow, 0 10px 40px rgba( 0, 0, 0, 0.35 ) );
+}
+
+.wpauc-modal__close {
+	position: absolute;
+	top: 0;
+	right: 0;
+	z-index: 1;
+	width: 2.5rem;
+	height: 2.5rem;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font-size: 1.75rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.wpauc-modal__body {
+	padding: var( --wpauc-padding, 2rem );
+}
+
+/* The injected content is a rendered post: its own first heading is the title,
+   so it needs no margin fighting the frame's top edge. */
+.wpauc-modal__body > :first-child {
+	margin-top: 0;
+}
+
+.wpauc-modal__body > :last-child {
+	margin-bottom: 0;
+}
+
+/* Scroll lock. Applied to <html> while a modal is open so the page behind does
+   not scroll away under the overlay. */
+.wpauc-modal-open {
+	overflow: hidden;
+}
+
+@media ( prefers-reduced-motion: no-preference ) {
+	.wpauc-modal.is-open .wpauc-modal__frame {
+		animation: wpauc-modal-in 160ms ease-out;
+	}
+
+	@keyframes wpauc-modal-in {
+		from {
+			opacity: 0;
+			transform: translateY( -0.5rem );
+		}
+	}
+}

@@ -1,6 +1,6 @@
 <?php
 /**
- * Kadence adapter — theme surface and frontend surface.
+ * Kadence adapter — the theme surface only.
  *
  * THEME: reconstructing the content region
  *
@@ -15,12 +15,16 @@
  * header and footer never render — nothing to strip afterwards, and no reliance
  * on the theme marking its main landmark.
  *
- * FRONTEND: which modal to drive
+ * ⚠ THE FRONTEND IS NOT HERE, and it was, which was a mistake worth naming.
+ * The loader and the modal shell are theme-agnostic — `WPAUC_Frontend` owns
+ * them. Keeping them here gated a generic feature on `wpauc_is_kadence()`, so
+ * every other theme got a working endpoint and nothing to call it.
  *
- * `kadence/modal` is MicroModal underneath. It gives the shell, the overlay,
- * the focus trap, the scroll lock and hash deep-linking; it has no notion of
- * loading another URL. That split is a good one — the shell is the tedious,
- * easy-to-get-wrong part, and the loading is ours.
+ * The original reasoning was that `kadence/modal` would supply the shell, the
+ * overlay, the focus trap and the scroll lock through MicroModal. It does not:
+ * Kadence enqueues that runtime only for pages containing the block, which a
+ * loop page does not. So the shell has to stand on its own, and standing on its
+ * own has nothing to do with Kadence.
  *
  * @package WP_Ajax_Url_Content
  */
@@ -67,84 +71,4 @@ function wpauc_kadence_render( $html ) {
 	do_action( $hook );
 
 	return (string) ob_get_clean();
-}
-
-add_action( 'wp_enqueue_scripts', 'wpauc_kadence_frontend' );
-
-/**
- * Ship the loader, told where the endpoint is and which modal to fill.
- *
- * @return void
- */
-function wpauc_kadence_frontend(): void {
-	if ( ! wpauc_is_kadence() ) {
-		return;
-	}
-
-	wp_enqueue_script(
-		'wpauc-loader',
-		WPAUC_URL . 'assets/loader.js',
-		array(),
-		WPAUC_VERSION,
-		true
-	);
-
-	wp_localize_script(
-		'wpauc-loader',
-		'wpaucSettings',
-		array(
-			'endpoint' => rest_url( WPAUC_Endpoint::NAMESPACE . WPAUC_Endpoint::ROUTE ),
-
-			// The trigger contract the site already uses. SkialpujFest stamps
-			// `.popup` + `data-id` onto every link to a modal-able post type.
-			'trigger'  => apply_filters( 'wpauc/trigger_selector', '.popup a, a.popup' ),
-		)
-	);
-}
-
-add_action( 'wp_footer', 'wpauc_kadence_shell', 5 );
-
-/**
- * Put a modal shell on the page when the content does not provide one.
- *
- * The spec calls for ONE shared modal, filled per trigger. A `kadence/modal`
- * block placed in the content would do, but that means editing every template
- * that might host a trigger — and a trigger can appear anywhere. Printing a
- * shell in the footer makes the feature work with no content changes at all.
- *
- * If the page already carries a modal (a `kadence/modal` block, or anything
- * marked `data-wpauc-modal`), that one wins and this prints nothing — the
- * author's shell is the one they styled.
- *
- * Deliberately plain: `hidden` until opened, `aria-modal`, a labelled close
- * button. MicroModal drives it when Kadence's runtime is on the page; the
- * loader falls back to toggling `hidden` when it is not, so the content is
- * always reachable.
- *
- * @return void
- */
-function wpauc_kadence_shell(): void {
-	if ( ! wpauc_is_kadence() || is_admin() ) {
-		return;
-	}
-
-	/**
-	 * Filter whether to print the fallback shell.
-	 *
-	 * @param bool $print Whether to print it.
-	 */
-	if ( ! apply_filters( 'wpauc/print_shell', true ) ) {
-		return;
-	}
-
-	printf(
-		'<div class="wpauc-modal" id="wpauc-modal" data-wpauc-modal hidden aria-hidden="true">'
-		. '<div class="wpauc-modal__overlay" data-micromodal-close>'
-		. '<div class="wpauc-modal__frame" role="dialog" aria-modal="true" aria-label="%1$s">'
-		. '<button class="wpauc-modal__close" aria-label="%2$s" data-micromodal-close>&times;</button>'
-		. '<div class="wpauc-modal__body" data-wpauc-content></div>'
-		. '</div></div></div>',
-		esc_attr__( 'Detail', 'wp-ajax-url-content' ),
-		esc_attr__( 'Close', 'wp-ajax-url-content' )
-	);
 }
