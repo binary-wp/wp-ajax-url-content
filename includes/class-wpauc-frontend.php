@@ -91,6 +91,18 @@ class WPAUC_Frontend {
 				 */
 				'trigger'  => apply_filters( 'wpauc/trigger_selector', '.popup a, a.popup' ),
 
+				/**
+				 * Filter whether opening a modal rewrites the address bar.
+				 *
+				 * ⚠ Deep links are the right default and WRONG INSIDE A FORM. A
+				 * reader who opens a detail from a half-filled form and then
+				 * reloads lands on the detail page instead of the form, and
+				 * whatever they had typed is gone. Hosts turn it off there.
+				 *
+				 * @param bool $deep_link Whether to push history state.
+				 */
+				'deepLink' => (bool) apply_filters( 'wpauc/deep_link', true ),
+
 				'i18n'     => array(
 					'close' => __( 'Close', 'wp-ajax-url-content' ),
 					'error' => __( 'Could not load that content.', 'wp-ajax-url-content' ),

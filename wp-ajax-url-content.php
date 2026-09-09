@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WP AJAX URL Content
  * Description: Serves the rendered content of any URL on this site without page chrome, plus the assets that content needs. Platform-independent core; theme and frontend behaviour come from adapters.
- * Version:     0.2.2
+ * Version:     0.3.1
  * Author:      wasilosos
  * License:     GPL-2.0-or-later
  * Text Domain: wp-ajax-url-content
@@ -36,7 +36,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WPAUC_VERSION', '0.2.2' );
+define( 'WPAUC_VERSION', '0.3.1' );
 define( 'WPAUC_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WPAUC_URL', plugin_dir_url( __FILE__ ) );
 

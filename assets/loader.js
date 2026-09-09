@@ -206,7 +206,7 @@
 	 * showing the first question while the modal showed the second.
 	 */
 	function push( url ) {
-		if ( ! url ) {
+		if ( ! url || false === settings.deepLink ) {
 			return;
 		}
 
@@ -228,6 +228,23 @@
 		);
 	}
 
+	// ⚠ CAPTURE, NOT BUBBLE — the third argument is load-bearing. A host page
+	// is free to stop a click before it reaches `document`, and one does:
+	// Conference Scheduler binds
+	//
+	//     .on( 'click', '.workshop a, …', function ( e ) { e.stopPropagation(); } )
+	//
+	// so that clicking a link inside a workshop row does not also toggle the
+	// row's detail panel. Reasonable for the plugin, fatal for a delegated
+	// listener sitting on `document`: every workshop link in the schedule
+	// navigated to its own page while every other `.popup` link on the same page
+	// opened the modal, which reads as the modal being broken for one post type.
+	//
+	// The capture phase runs on the way DOWN, before any handler on the target,
+	// so nothing between the link and the document can hide the click from us.
+	// That is the right phase for this listener anyway: intercepting `.popup`
+	// links is its whole job, and it should not depend on what a theme or
+	// another plugin does with the same event.
 	document.addEventListener(
 		'click',
 		function ( event ) {
@@ -269,7 +286,7 @@
 			event.preventDefault();
 			load( trigger.href, el );
 		},
-		false
+		true
 	);
 
 	document.addEventListener( 'keydown', function ( event ) {
