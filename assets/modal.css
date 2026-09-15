@@ -144,3 +144,55 @@
 		}
 	}
 }
+
+/* ── The close button sits OUTSIDE the frame, and stays there ────────────────
+ *
+ * ⚠ TWO THINGS WERE WRONG, and only one of them showed standing still.
+ *
+ * 1. IT SAT INSIDE THE FRAME, overlapping the content's top-right corner. The
+ *    site this replaces put it in the gutter ABOVE the panel, right-aligned to
+ *    it — which is also why it never had to fight the content underneath.
+ *
+ * 2. IT SCROLLED AWAY. `position: absolute` pinned it to the FRAME, and the
+ *    frame was what scrolled inside the overlay. Measured on a 3072px-tall
+ *    detail: 900px down, the button was at -836px — gone, leaving the overlay
+ *    click or the keyboard as the only way out.
+ *
+ * ⚠ AND STICKY CANNOT FIX BOTH, which is worth writing down because it is the
+ * obvious first try. A sticky element is clamped to its CONTAINING BLOCK, and
+ * for a child of the frame that is the frame — so `top: 0` pins it to the
+ * frame's top edge, back inside, however far a negative margin tries to lift
+ * it. Measured: 60px inside, exactly the margin that was supposed to take it
+ * out.
+ *
+ * So the scroll moves instead. The frame is capped to the viewport and the
+ * BODY scrolls inside it, which is what the old popup did too
+ * (`popup-button.less`: `max-height: 80vh; overflow-y: auto` on the columns).
+ * With the frame no longer scrolling, a plain absolute button above its
+ * top-right corner is always where the reader left it.
+ */
+.wpauc-modal__overlay {
+	/* No longer the scroller — the body is. Two scrollbars otherwise. */
+	overflow: hidden;
+
+	/* Room above the frame for the button that now lives there. */
+	padding-top: calc(5vh + var(--wpauc-close-size, 2.5rem));
+}
+
+.wpauc-modal__frame {
+	display: flex;
+	flex-direction: column;
+	max-height: 100%;
+}
+
+.wpauc-modal__body {
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
+.wpauc-modal__close {
+	top: calc(-1 * var(--wpauc-close-size, 2.5rem));
+	right: 0;
+	width: var(--wpauc-close-size, 2.5rem);
+	height: var(--wpauc-close-size, 2.5rem);
+}

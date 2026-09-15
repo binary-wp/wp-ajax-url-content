@@ -114,6 +114,19 @@
 	function restoreUrl() {
 		if ( window.history.state && window.history.state.wpauc ) {
 			window.history.back();
+			return;
+		}
+
+		// ⚠ Arrived WITH the hash — a reload while the modal was open, or an old
+		// link. There is no entry of ours to step back to, so the hash is
+		// dropped in place; without this, closing leaves an address that opens
+		// the modal again on the next reload.
+		if ( fromHashUrl() ) {
+			window.history.replaceState(
+				null,
+				'',
+				window.location.pathname + window.location.search
+			);
 		}
 	}
 
@@ -270,18 +283,107 @@
 	 * version bailed out entirely in this case, which left the address bar
 	 * showing the first question while the modal showed the second.
 	 */
+	/**
+	 * The address for an open modal: the page you are ON, plus the post in the
+	 * hash.
+	 *
+	 * ⚠ THE ADDRESS BAR USED TO CLAIM TO BE ON THE DETAIL PAGE, and a reload
+	 * made good on the claim. Writing the target's own path meant refreshing
+	 * threw the reader onto the detail page as a full page load, losing both the
+	 * modal and whatever they had been reading — a list, a cart, a schedule
+	 * scrolled halfway down.
+	 *
+	 * Keeping the host page in the URL and naming the post after a `#` costs
+	 * nothing on reload: the browser re-requests the page the reader was already
+	 * on, and this file puts the modal back over it. One load, not two.
+	 *
+	 * ⚠ AND IT WAS TRIED THE OTHER WAY FIRST. Holding the real URL and bouncing
+	 * back to the host on reload works, but the browser has already fetched the
+	 * post by the time any of this runs — so it costs a SECOND full load with the
+	 * detail page visible in between, which is worse than the problem.
+	 *
+	 * Nothing is lost for sharing or for search: the TRIGGER is still an ordinary
+	 * link to the real permalink, and that permalink still renders a real page on
+	 * its own. The hash only appears once a modal is open.
+	 *
+	 * The old site wrote the same shape (`wp_url_to_hash_url()` in astra-ski), so
+	 * its links — in e-mails, in content, in bookmarks — keep working.
+	 *
+	 * @param {string} url Absolute URL of the post being shown.
+	 * @return {string|null} Address to write, or null when it cannot be one.
+	 */
+	function toHashUrl( url ) {
+		var a = document.createElement( 'a' );
+		a.href = url;
+
+		// Same site only — a hash cannot carry another origin, and a trigger
+		// pointing off-site is not ours to intercept.
+		if ( a.origin !== window.location.origin ) {
+			return null;
+		}
+
+		var target = a.pathname.replace( /^\//, '' ) + a.search;
+
+		if ( ! target ) {
+			return null;
+		}
+
+		return window.location.pathname + window.location.search + '#' + target;
+	}
+
+	/**
+	 * The post a hash is asking for, if it is asking for one.
+	 *
+	 * ⚠ A HASH IS USUALLY AN ANCHOR, and anchors must be left alone — `#program`
+	 * is a heading on the page. What tells them apart is SHAPE: a post's address
+	 * here is always a permalink path, which is at least two non-empty segments
+	 * (`workshop/pedro-ve-svete`). An anchor is one word.
+	 *
+	 * Two segments rather than merely "contains a slash": the looser test also
+	 * matches `#section/`, which is an anchor with a stray slash, and would have
+	 * sent a fetch after a post that does not exist.
+	 *
+	 * @return {string|null} Absolute URL, or null when the hash is an anchor.
+	 */
+	function fromHashUrl() {
+		var hash = window.location.hash.slice( 1 );
+
+		if ( ! hash ) {
+			return null;
+		}
+
+		var path = hash.split( '?' )[ 0 ];
+		var segments = path.split( '/' ).filter( function ( part ) {
+			return '' !== part;
+		} );
+
+		if ( segments.length < 2 ) {
+			return null;
+		}
+
+		return window.location.origin + '/' + hash.replace( /^\//, '' );
+	}
+
 	function push( url ) {
 		if ( ! url || false === settings.deepLink ) {
 			return;
 		}
 
+		var address = toHashUrl( url );
+
+		if ( ! address ) {
+			return;
+		}
+
+		// ⚠ The STATE keeps the REAL url, not the hash one. popstate reloads
+		// from it, and `load()` wants a permalink to fetch, not an address.
 		var current = window.history.state;
 
 		if ( current && current.wpauc ) {
 			window.history.replaceState(
 				{ wpauc: url, from: current.from },
 				'',
-				url
+				address
 			);
 			return;
 		}
@@ -289,7 +391,7 @@
 		window.history.pushState(
 			{ wpauc: url, from: window.location.href },
 			'',
-			url
+			address
 		);
 	}
 
@@ -382,4 +484,31 @@
 
 		close( el );
 	} );
+
+	/**
+	 * A modal that was open before a reload is open after it.
+	 *
+	 * ⚠ THE OTHER HALF OF THE HASH, and without it the hash is only cosmetic:
+	 * the reader would land back on the right page with the modal gone, which is
+	 * a different bug rather than a fix.
+	 *
+	 * `silent` — the address already says this. Writing it again would push a
+	 * duplicate entry and make the first Back press appear to do nothing.
+	 */
+	function restoreFromHash() {
+		var url = fromHashUrl();
+		var el = url && shell();
+
+		if ( el ) {
+			load( url, el, true );
+		}
+	}
+
+	// The shell prints in the footer, so on a slow document this file can run
+	// before it exists.
+	if ( 'loading' === document.readyState ) {
+		document.addEventListener( 'DOMContentLoaded', restoreFromHash );
+	} else {
+		restoreFromHash();
+	}
 }() );
