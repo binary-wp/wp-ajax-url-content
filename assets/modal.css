@@ -93,3 +93,54 @@
 		}
 	}
 }
+
+/* ── The waiting state ──────────────────────────────────────────────────────
+ *
+ * ⚠ THIS IS STRUCTURAL, not paint, which is why it lives here and not in the
+ * theme. The shell opens BEFORE the content is fetched (see loader.js), so
+ * there is a period — sometimes a long one, because the endpoint re-runs
+ * WordPress against the target URL in process — where the frame is on screen
+ * and empty. Something has to occupy it, or opening early just moves the
+ * silence from the page to the modal.
+ *
+ * Keyed on `aria-busy`, so the state is announced to assistive technology and
+ * drawn from the same attribute rather than a second class kept in step by
+ * hand. Size and colour are custom properties like everything else here.
+ */
+.wpauc-modal__body[aria-busy="true"] {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: var( --wpauc-busy-height, 40vh );
+}
+
+.wpauc-modal__body[aria-busy="true"]::after {
+	content: "";
+	width: var( --wpauc-spinner-size, 2.5rem );
+	height: var( --wpauc-spinner-size, 2.5rem );
+	border: var( --wpauc-spinner-weight, 3px ) solid var( --wpauc-spinner-track, rgba( 0, 0, 0, 0.12 ) );
+	border-top-color: var( --wpauc-spinner-color, currentColor );
+	border-radius: 50%;
+	animation: wpauc-spin 700ms linear infinite;
+}
+
+@keyframes wpauc-spin {
+	to {
+		transform: rotate( 360deg );
+	}
+}
+
+/* ⚠ Still a visible indicator, not nothing. Reduced motion means no spin, not
+   "leave the reader staring at an empty frame" — so the ring stays and simply
+   pulses instead of rotating. */
+@media ( prefers-reduced-motion: reduce ) {
+	.wpauc-modal__body[aria-busy="true"]::after {
+		animation: wpauc-pulse 1.2s ease-in-out infinite;
+	}
+
+	@keyframes wpauc-pulse {
+		50% {
+			opacity: 0.35;
+		}
+	}
+}

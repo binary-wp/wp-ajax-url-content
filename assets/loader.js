@@ -143,6 +143,35 @@
 	}
 
 	/**
+	 * Say that content has landed, so page scripts can look at it.
+	 *
+	 * ⚠ THIS IS NOT "RUN THE CONTENT'S SCRIPTS", and the difference is the
+	 * whole security argument. `applyAssets()` still refuses to execute
+	 * anything the response carries. What this does is tell code ALREADY
+	 * RUNNING ON THE PAGE that the DOM changed underneath it — the same thing
+	 * an infinite-scroll or a filtered loop has to say, and for the same
+	 * reason. Nothing new is executed; something already trusted is asked to
+	 * look again.
+	 *
+	 * Without it, anything JS-driven inside a modal is simply dead: bound on
+	 * DOMContentLoaded, over a DOM that did not yet contain this content.
+	 *
+	 * The event is generic on purpose. Mapping it onto whatever a given theme
+	 * calls its own re-init signal is an adapter's job, not this file's.
+	 *
+	 * @param {Element} target Node the content was injected into.
+	 * @param {string}  url    URL that was loaded.
+	 */
+	function announce( target, url ) {
+		document.dispatchEvent(
+			new CustomEvent( 'wpauc:loaded', {
+				bubbles: true,
+				detail: { target: target, url: url },
+			} )
+		);
+	}
+
+	/**
 	 * @param {string}  url    Target.
 	 * @param {Element} el     Shell.
 	 * @param {boolean} silent Leave the address bar alone — set when the load
@@ -155,12 +184,31 @@
 			target.innerHTML = cache[ url ].html;
 			applyAssets( cache[ url ].assets );
 			open( el );
+			announce( target, cache[ url ].url || url );
 			if ( ! silent ) {
 				push( cache[ url ].url || url );
 			}
 			return;
 		}
 
+		// ⚠ OPEN FIRST, THEN FETCH — the order is the whole point.
+		//
+		// This used to set `aria-busy` here and call `open()` only inside the
+		// success handler, so for the entire round trip the shell was still
+		// `display:none` and the busy flag sat on an element nobody could see.
+		// No stylesheet could express a loading state, because there was
+		// nothing on screen to style: the reader clicked and got silence until
+		// the content appeared all at once.
+		//
+		// Opening first costs nothing when the response is quick and is the
+		// difference between "broken" and "loading" when it is not.
+		if ( ! isOpen( el ) ) {
+			open( el );
+		}
+
+		// Stale content under a spinner reads as the new post having loaded
+		// wrong. Empty it, and let the busy state be the only thing showing.
+		target.innerHTML = '';
 		target.setAttribute( 'aria-busy', 'true' );
 
 		fetch( settings.endpoint + '?url=' + encodeURIComponent( url ), {
@@ -177,7 +225,18 @@
 				target.innerHTML = data.html;
 				applyAssets( data.assets );
 				target.removeAttribute( 'aria-busy' );
-				open( el );
+
+				// Already open — see above. Re-running open() here would only
+				// re-focus and re-zero the scroll, which it has to do anyway
+				// when the content arrives, so do exactly that much.
+				var overlay = el.querySelector( '.wpauc-modal__overlay' );
+
+				if ( overlay ) {
+					overlay.scrollTop = 0;
+				}
+
+				announce( target, data.url || url );
+
 				if ( ! silent ) {
 					push( data.url || url );
 				}
@@ -187,6 +246,12 @@
 
 				// The trigger is a real link to a real URL. If the fetch fails,
 				// let it behave like one rather than doing nothing.
+				//
+				// Close on the way out: the shell is open now (it opens before
+				// the fetch), and leaving an empty modal over the page while
+				// the browser navigates is a worse failure than the one that
+				// caused it.
+				close( el );
 				window.location.href = url;
 			} );
 	}

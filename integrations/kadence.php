@@ -72,3 +72,41 @@ function wpauc_kadence_render( $html ) {
 
 	return (string) ob_get_clean();
 }
+
+add_action( 'wp_enqueue_scripts', 'wpauc_kadence_reinit_bridge', 20 );
+
+/**
+ * Tell Kadence's own scripts to look at the content a modal just loaded.
+ *
+ * ⚠ THE FRONTEND WARNING ABOVE DOES NOT APPLY HERE, and the distinction
+ * matters. What was wrong before was gating the GENERIC feature — the shell,
+ * the loader — on `wpauc_is_kadence()`, so other themes got an endpoint they
+ * could not use. This is the opposite: a bridge that is meaningless anywhere
+ * else, because `kadenceJSInitReload` is Kadence's own event name. Generic
+ * behaviour in the plugin, theme-specific translation in the adapter.
+ *
+ * ⚠ AND IT EXECUTES NOTHING FROM THE RESPONSE. Six of Kadence's front-end
+ * scripts already listen for this event so they can rescan after an infinite
+ * scroll or a filtered loop — the theme's lightbox, and Blocks' splide,
+ * show-more, tippy and search. A modal is the same situation: the DOM grew
+ * after those scripts bound to it. Re-dispatching asks code that is already
+ * loaded and already trusted to look again.
+ *
+ * Which of them actually do anything depends on what the site enables — the
+ * lightbox, for instance, only enqueues when the Customizer's Lightbox option
+ * is on. Nothing here turns those on; it only stops them missing the modal.
+ *
+ * @return void
+ */
+function wpauc_kadence_reinit_bridge(): void {
+	if ( ! wpauc_is_kadence() || ! wp_script_is( 'wpauc-loader', 'enqueued' ) ) {
+		return;
+	}
+
+	wp_add_inline_script(
+		'wpauc-loader',
+		"document.addEventListener('wpauc:loaded',function(){"
+			. "document.dispatchEvent(new CustomEvent('kadenceJSInitReload'));"
+			. '});'
+	);
+}
