@@ -482,6 +482,22 @@
 			return;
 		}
 
+		// ⚠ A LINK TO A HASH ADDRESS IS A HISTORY MOVE TOO, and it carries no
+		// state. Content links are written the old site's way —
+		// `/#workshop/dolu-z-kopce/` in a speaker's bio — and on the page that
+		// already shows the modal, following one is a same-document navigation:
+		// no reload, so `restoreFromHash()` never runs, and the browser reports
+		// it here with `state === null`. Read as "stepped off a modal" it CLOSED
+		// the window and left the address pointing at a post nobody opened.
+		// The hash is the request, exactly as on a reload. `silent` — the
+		// browser has already written the entry.
+		var url = fromHashUrl();
+
+		if ( url ) {
+			load( url, el, true );
+			return;
+		}
+
 		close( el );
 	} );
 
